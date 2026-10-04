@@ -26,7 +26,7 @@ Once installed it runs offline (the whole app is local); FX rates need a connect
 ## Features
 
 - **Calculator** — `+ − × ÷`, `C`/`CE`, `%` (calculator-style: `100 + 10 % =` 110), `±`, decimals, divide-by-zero error state, history line, live thousands grouping.
-- **FX converter** — sticky base currency card, amount input, live-converted list with per-row `1 BASE = x CUR` rate line. Every row's value is editable: change any currency and the base plus all other rows recalculate. Long-press a row to remove it (confirmation dialog).
+- **FX converter** — sticky base currency card, amount input, live-converted list with per-row `1 BASE = x CUR` rate line. Every row's value is editable: change any currency and the base plus all other rows recalculate; each field has an in-place clear (✕) button, and the keyboard's Enter/Done key commits the value and dismisses the keypad. Reorder rows by dragging the handle on the left of any row; long-press a row to remove it (confirmation dialog).
 - **Rates with failover** — primary: `open.er-api.com` (ExchangeRate-API, ~160 currencies); fallback: `api.frankfurter.dev` (Frankfurter; the PRD's `api.frankfurter.app` URL now 301s there). 10 s timeout each; if both fail, last cached rates are shown with a "Rates may be outdated" warning. Rates older than 1 h auto-refresh when you enter FX mode or bring the app back from background.
 - **API status monitoring** (Settings) — 🟢 Live / 🟡 Timeout (failing or slow) / 🔴 Dead (failing for > 24 h) per provider, plus time since last check and the last successful refresh timestamp.
 - **Currencies** — searchable picker (~160 currencies with flags), drag-handle reordering, add/remove, change base (auto-refetches).

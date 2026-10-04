@@ -125,7 +125,13 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 
 .cur-list{display:flex;flex-direction:column;gap:8px;
   padding-bottom:calc(100px + env(safe-area-inset-bottom))}
-.cur-row{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.cur-row{display:flex;align-items:center;gap:12px;padding:12px 14px;
+  transition:transform .18s ease,border-color .15s,box-shadow .15s,background .15s}
+.row-handle{align-self:stretch;display:flex;align-items:center;margin-left:-6px;padding:0 2px 0 8px;
+  color:#39415c;touch-action:none;cursor:grab}
+.row-handle .ic{width:17px;height:17px}
+.cur-row.dragging{position:relative;z-index:5;transform:scale(1.02);background:#1a2440;
+  border-color:rgba(139,92,246,.55);box-shadow:0 14px 34px rgba(0,0,0,.55);transition:none}
 .cur-id{display:flex;flex-direction:column;min-width:0}
 .cur-id b{font-size:16px;letter-spacing:.02em}
 .cur-id span{font-size:12px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -137,6 +143,15 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
   padding:0 0 2px;border-bottom:1px dashed transparent}
 .cur-input:focus{border-bottom-color:var(--accent)}
 .cur-input:disabled{opacity:.55}
+.clr{position:absolute;left:-2px;top:9px;width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:var(--muted);
+  background:rgba(139,148,171,.18)}
+.clr .ic{width:12px;height:12px;stroke-width:2.6}
+.clr:active{color:var(--text);background:rgba(139,148,171,.32)}
+.cur-amt{position:relative}
+.amt-wrap{position:relative}
+.amt-wrap .clr{top:16px}
+.cur-amt.empty .clr,.amt-wrap.empty .clr{display:none}
 .add-row{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:14px;
   border-radius:15px;border:1.5px dashed rgba(139,148,171,.4);background:rgba(139,148,171,.05);
   color:var(--muted);font-weight:600;font-size:14px}
@@ -309,8 +324,11 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
             <span class="base-id"><b id="baseCode">USD</b><span id="baseName">US Dollar</span></span>
             <svg class="ic chev-r"><use href="#i-chev"/></svg>
           </button>
-          <input class="amount" id="amount" inputmode="decimal" enterkeyhint="done"
-                 autocomplete="off" spellcheck="false" aria-label="Amount in base currency" value="1">
+          <div class="amt-wrap">
+            <input class="amount" id="amount" inputmode="decimal" enterkeyhint="done"
+                   autocomplete="off" spellcheck="false" aria-label="Amount in base currency" value="1">
+            <button class="clr" id="baseClr" aria-label="Clear amount" tabindex="-1"><svg class="ic"><use href="#i-x"/></svg></button>
+          </div>
           <div class="meta-row">
             <button class="refresh" id="refreshBtn">
               <svg class="ic"><use href="#i-refresh"/></svg><span>Refresh</span>
@@ -379,7 +397,7 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
         <span class="set-name">Last successful refresh</span>
         <span class="set-val" id="lastRefresh">—</span>
       </div>
-      <div class="about">CalcPlus v1.1 · single-file PWA<br>
+      <div class="about">CalcPlus v1.2 · single-file PWA<br>
         Rates: ExchangeRate-API (primary) · Frankfurter (fallback)<br>
         All data stays on your device</div>
     </div>
@@ -821,9 +839,12 @@ function renderList(){
       :'<b>—</b>';
     var sub=r!==null?('1 '+settings.base+' = '+fmtAmt(r)+' '+c):'No rate data';
     return'<div class="card cur-row" data-c="'+c+'">'+
+      '<div class="row-handle" aria-label="Drag to reorder"><svg class="ic"><use href="#i-handle"/></svg></div>'+
       '<span class="flag">'+curFlag(c)+'</span>'+
       '<div class="cur-id"><b>'+c+'</b><span>'+curName(c)+'</span></div>'+
-      '<div class="cur-amt">'+field+'<span>'+sub+'</span></div></div>';
+      '<div class="cur-amt">'+field+
+        '<button class="clr" aria-label="Clear value" tabindex="-1"><svg class="ic"><use href="#i-x"/></svg></button>'+
+        '<span>'+sub+'</span></div></div>';
   }).join('')+
   '<button class="add-row" id="addCur"><svg class="ic"><use href="#i-plus"/></svg>Add currency</button>';
   var add=$('#addCur');if(add)add.addEventListener('click',function(){openPicker('add')});
@@ -954,6 +975,62 @@ function setBase(c){
 
 /* ---------- manage currencies (drag to reorder) ---------- */
 var MNG_GAP=8;
+
+/* Pointer-based drag-to-reorder shared by the FX list and the manage sheet.
+   Material-style: an explicit handle lifts the row; siblings shift as the
+   pointer crosses their midpoints. */
+var SORT_GAP=8;
+function makeSortable(container,handleSel,rowSel,onEnd){
+  var drag=null;
+  container.addEventListener('pointerdown',function(e){
+    var h=e.target.closest(handleSel);if(!h)return;
+    e.preventDefault();
+    var row=h.closest(rowSel);if(!row)return;
+    drag={row:row,startY:e.clientY,pid:e.pointerId};
+    row.classList.add('dragging');
+    window.addEventListener('pointermove',onMove);
+    window.addEventListener('pointerup',onUp);
+    window.addEventListener('pointercancel',onUp);
+  });
+  function onMove(e){
+    if(!drag||e.pointerId!==drag.pid)return;
+    var row=drag.row;
+    row.style.transform='translateY('+(e.clientY-drag.startY)+'px)';
+    var guard=0;
+    while(guard++<40){
+      var next=row.nextElementSibling,prev=row.previousElementSibling;
+      if(next&&next.matches(rowSel)){
+        var nr=next.getBoundingClientRect();
+        if(e.clientY>nr.top+nr.height/2){
+          container.insertBefore(row,next.nextElementSibling);
+          drag.startY+=nr.height+SORT_GAP;
+          row.style.transform='translateY('+(e.clientY-drag.startY)+'px)';
+          continue;
+        }
+      }
+      if(prev&&prev.matches(rowSel)){
+        var pr=prev.getBoundingClientRect();
+        if(e.clientY<pr.top+pr.height/2){
+          container.insertBefore(row,prev);
+          drag.startY-=pr.height+SORT_GAP;
+          row.style.transform='translateY('+(e.clientY-drag.startY)+'px)';
+          continue;
+        }
+      }
+      break;
+    }
+  }
+  function onUp(){
+    if(!drag)return;
+    drag.row.classList.remove('dragging');
+    drag.row.style.transform='';
+    drag=null;
+    window.removeEventListener('pointermove',onMove);
+    window.removeEventListener('pointerup',onUp);
+    window.removeEventListener('pointercancel',onUp);
+    onEnd();
+  }
+}
 function openManage(){renderManage();openSheet('sheetManage')}
 function renderManage(){
   var el=$('#manageList');
@@ -971,57 +1048,10 @@ function bindManage(){
     var del=e.target.closest('.mng-del');if(!del)return;
     confirmRemove(del.getAttribute('data-c'));
   });
-  var drag=null;
-  var list=$('#manageList');
-  list.addEventListener('pointerdown',function(e){
-    var h=e.target.closest('.drag-handle');if(!h)return;
-    e.preventDefault();
-    var row=h.closest('.mng-row');
-    drag={row:row,startY:e.clientY,pid:e.pointerId};
-    row.classList.add('dragging');
-    window.addEventListener('pointermove',onMove);
-    window.addEventListener('pointerup',onUp);
-    window.addEventListener('pointercancel',onUp);
-  });
-  function onMove(e){
-    if(!drag||e.pointerId!==drag.pid)return;
-    var row=drag.row;
-    row.style.transform='translateY('+(e.clientY-drag.startY)+'px)';
-    var guard=0;
-    while(guard++<30){
-      var next=row.nextElementSibling,prev=row.previousElementSibling;
-      if(next){
-        var nr=next.getBoundingClientRect();
-        if(e.clientY>nr.top+nr.height/2){
-          list.insertBefore(row,next.nextElementSibling);
-          drag.startY+=nr.height+MNG_GAP;
-          row.style.transform='translateY('+(e.clientY-drag.startY)+'px)';
-          continue;
-        }
-      }
-      if(prev){
-        var pr=prev.getBoundingClientRect();
-        if(e.clientY<pr.top+pr.height/2){
-          list.insertBefore(row,prev);
-          drag.startY-=pr.height+MNG_GAP;
-          row.style.transform='translateY('+(e.clientY-drag.startY)+'px)';
-          continue;
-        }
-      }
-      break;
-    }
-  }
-  function onUp(){
-    if(!drag)return;
-    drag.row.classList.remove('dragging');
-    drag.row.style.transform='';
-    drag=null;
-    window.removeEventListener('pointermove',onMove);
-    window.removeEventListener('pointerup',onUp);
-    window.removeEventListener('pointercancel',onUp);
+  makeSortable($('#manageList'),'.drag-handle','.mng-row',function(){
     targets=$$('#manageList .mng-row').map(function(r){return r.getAttribute('data-c')});
     saveTargets();renderList();updateSettingsDynamic();
-  }
+  });
 }
 
 /* ================================================================
@@ -1160,24 +1190,42 @@ function bindFX(){
     if(v!==this.value){this.value=v}
     amount=v;
     updateRowValues(null);
+    updateClrState(this);
   });
-  amtEl.addEventListener('focus',function(){this.select()});
-  amtEl.addEventListener('keydown',function(e){if(e.key==='Enter')this.blur()});
+  amtEl.addEventListener('focus',function(){this.select();updateClrState(this)});
+  amtEl.addEventListener('blur',function(){
+    this.value=fmtAmt(parseAmt());          // commit: canonical grouped format
+  });
+  amtEl.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){
+      e.preventDefault();this.blur();
+      this.value=fmtAmt(parseAmt());        // commit directly (blur may not fire events)
+    }
+  });
+  $('#baseClr').addEventListener('click',function(){
+    amtEl.value='';amount='';
+    updateClrState(amtEl);
+    updateRowValues(null);
+    amtEl.focus();
+  });
   $('#refreshBtn').addEventListener('click',function(){buzz();refreshRates(true)});
   $('#baseSelect').addEventListener('click',function(){openPicker('base')});
 
   var list=$('#curList');
 
   /* Editing a target currency's value recalculates the base amount and,
-     through it, every other row (PRD 3.2.2). */
+     through it, every other row (PRD 3.2.2). An emptied field means zero,
+     like the C key on a calculator. */
   list.addEventListener('input',function(e){
     var inp=e.target.closest('.cur-input');if(!inp)return;
+    updateClrState(inp);
     var c=inp.getAttribute('data-c');
     var usable=ratesUsable();
     var r=usable?ratesCache.rates[c]:null;
     if(!r||r<=0)return;
-    var v=parseFloat(inp.value.replace(/,/g,'.'));
-    if(!isFinite(v))return;
+    var v;
+    if(inp.value===''){v=0}
+    else{v=parseFloat(inp.value.replace(/,/g,'.'));if(!isFinite(v))return}
     var base=v/r;
     if(!isFinite(base))return;
     amount=cleanNumStr(base);
@@ -1185,11 +1233,41 @@ function bindFX(){
     updateRowValues(c);
   });
 
-  /* Long-press a currency row to delete it (with confirmation dialog). */
+  /* In-field clear button (Material trailing-clear: shown whenever the
+     field has a value); Enter/Done commits the value, reformats it and
+     drops the keypad. */
+  list.addEventListener('focusout',function(e){
+    var inp=e.target.closest('.cur-input');if(!inp)return;
+    commitRowInput(inp);
+  });
+  list.addEventListener('click',function(e){
+    var clr=e.target.closest('.clr');if(!clr)return;
+    var inp=clr.parentElement.querySelector('.cur-input');
+    if(!inp)return;
+    inp.value='';
+    inp.dispatchEvent(new Event('input',{bubbles:true}));
+    inp.focus();
+  });
+  list.addEventListener('keydown',function(e){
+    var inp=e.target.closest('.cur-input');if(!inp)return;
+    if(e.key==='Enter'){
+      e.preventDefault();inp.blur();
+      commitRowInput(inp);
+    }
+  });
+
+  /* Reorder rows in place via the drag handle (PRD 3.2.1). */
+  makeSortable(list,'.row-handle','.cur-row',function(){
+    targets=$$('#curList .cur-row').map(function(r){return r.getAttribute('data-c')});
+    saveTargets();renderList();updateSettingsDynamic();
+    if(document.getElementById('sheetManage').classList.contains('open'))renderManage();
+  });
+
+  /* Long-press a currency row (not its handle/input) to delete it. */
   var lp=null;
   function cancelLp(){if(lp){clearTimeout(lp.t);lp=null}}
   list.addEventListener('pointerdown',function(e){
-    if(e.target.closest('.cur-input')||e.target.closest('.add-row'))return;
+    if(e.target.closest('.cur-input')||e.target.closest('.add-row')||e.target.closest('.row-handle'))return;
     var row=e.target.closest('.cur-row');if(!row)return;
     var c=row.getAttribute('data-c');if(!c)return;
     cancelLp();
@@ -1206,6 +1284,21 @@ function bindFX(){
   list.addEventListener('pointerup',cancelLp);
   list.addEventListener('pointercancel',cancelLp);
   list.addEventListener('scroll',cancelLp,true);
+}
+/* Clear-button visibility is value-driven (not focus-driven) so it works
+   regardless of document focus state: shown while the field has a value. */
+function updateClrState(inp){
+  var w=inp.closest('.cur-amt')||inp.closest('.amt-wrap');
+  if(w)w.classList.toggle('empty',inp.value==='');
+}
+/* On commit (Enter/Done or tapping away): reparse, keep the math in sync
+   and show the canonical grouped value. */
+function commitRowInput(inp){
+  var c=inp.getAttribute('data-c');
+  if(!ratesUsable()||!ratesCache.rates[c])return;
+  var v=parseFloat(inp.value.replace(/,/g,'.'));
+  if(!isFinite(v))v=parseAmt()*ratesCache.rates[c];
+  inp.value=fmtAmt(v);
 }
 function tick(){
   if(mode==='fx')updateFreshness();
