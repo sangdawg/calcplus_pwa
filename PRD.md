@@ -40,8 +40,9 @@ CalcPlus is a mobile application that combines a standard calculator with a fore
 
 #### 3.2.1 Base Currency (Sticky)
 - A "base" currency displayed at the top of the screen
-- User enters an amount in the base currency
-- All other selected currencies display converted values below
+- User enters an amount in any currency
+- All other listed currencies display converted values
+- Currency list is managed by the user, including adding/removing, changing display order
 
 #### 3.2.2 Currency List
 - Display multiple target currencies below the base currency
