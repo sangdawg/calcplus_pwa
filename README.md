@@ -1,6 +1,6 @@
-# CalcPlus
+# CALC++
 
-A calculator + foreign-exchange converter in **one self-contained HTML file**, installable as a PWA on Android and iOS. Built from `PRD.md`.
+A calculator + foreign-exchange converter in **one self-contained HTML file**, installable as a PWA on Android and iOS. Built from `PRD.md`. (The app is branded **CALC++**; the source file keeps the `CalcPlus.html` name.)
 
 ## The Package
 
