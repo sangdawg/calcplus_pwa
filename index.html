@@ -132,6 +132,11 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 .cur-amt{margin-left:auto;text-align:right;flex:none}
 .cur-amt b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
 .cur-amt span{display:block;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:1px}
+.cur-input{display:block;width:9em;max-width:100%;background:transparent;border:0;outline:none;
+  color:var(--text);text-align:right;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;
+  padding:0 0 2px;border-bottom:1px dashed transparent}
+.cur-input:focus{border-bottom-color:var(--accent)}
+.cur-input:disabled{opacity:.55}
 .add-row{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:14px;
   border-radius:15px;border:1.5px dashed rgba(139,148,171,.4);background:rgba(139,148,171,.05);
   color:var(--muted);font-weight:600;font-size:14px}
@@ -206,6 +211,22 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 
 /* manage currencies */
 .manage-hint{font-size:12px;color:var(--dim);margin:2px 2px 12px;line-height:1.6}
+.cur-row,.mng-row,.pick-row{user-select:none;-webkit-user-select:none}
+.cur-input{user-select:text;-webkit-user-select:text}
+
+/* confirm dialog */
+.dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.94);
+  width:min(330px,86vw);background:#111930;border:1px solid var(--line);border-radius:20px;
+  padding:22px 20px 16px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6);
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.sheet-wrap.open .dialog{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.dialog h3{font-size:17px;margin-bottom:6px}
+.dialog p{font-size:13.5px;color:var(--muted);line-height:1.5;margin-bottom:18px}
+.dialog-actions{display:flex;gap:10px}
+.dialog-actions button{flex:1;padding:12px;border-radius:13px;font-weight:700;font-size:14.5px}
+.btn-ghost{background:#1b2440;color:#c7d0e8}
+.btn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;
+  box-shadow:0 4px 16px rgba(239,68,68,.35)}
 .manage-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .mng-row{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);
   border-radius:14px;height:62px;padding:0 6px 0 4px;transition:transform .18s ease,background .15s,border-color .15s}
@@ -358,7 +379,7 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
         <span class="set-name">Last successful refresh</span>
         <span class="set-val" id="lastRefresh">—</span>
       </div>
-      <div class="about">CalcPlus v1.0 · single-file PWA<br>
+      <div class="about">CalcPlus v1.1 · single-file PWA<br>
         Rates: ExchangeRate-API (primary) · Frankfurter (fallback)<br>
         All data stays on your device</div>
     </div>
@@ -397,6 +418,19 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
       <input id="pickerSearch" placeholder="Search name or code" autocomplete="off" spellcheck="false">
     </div>
     <div class="sheet-body" id="pickerList"></div>
+  </div>
+</div>
+
+<!-- ============ Confirm dialog (long-press delete) ============ -->
+<div class="sheet-wrap" id="sheetConfirm" style="z-index:70">
+  <div class="backdrop" data-close></div>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h3 id="confirmTitle">Remove currency?</h3>
+    <p id="confirmText"></p>
+    <div class="dialog-actions">
+      <button class="btn-ghost" data-close>Cancel</button>
+      <button class="btn-danger" id="confirmOk">Delete</button>
+    </div>
   </div>
 </div>
 
@@ -513,15 +547,6 @@ function relTime(ts){
   var d=Math.floor(h/24);if(d<7)return d+(d===1?' day ago':' days ago');
   return new Date(ts).toLocaleDateString();
 }
-function copyText(t){
-  function legacy(){try{var ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;opacity:0';
-    document.body.appendChild(ta);ta.select();var ok=document.execCommand('copy');ta.remove();return ok}catch(e){return false}}
-  if(navigator.clipboard&&window.isSecureContext){
-    return navigator.clipboard.writeText(t).then(function(){return true}).catch(function(){return legacy()});
-  }
-  return Promise.resolve(legacy());
-}
-
 /* ================================================================
    Number formatting
    ================================================================ */
@@ -539,6 +564,26 @@ function fmtAmt(v){
 function parseAmt(){
   var v=parseFloat(String(amount).replace(/,/g,'.'));
   return isFinite(v)?v:0;
+}
+function fmtPlain(v){
+  if(!isFinite(v))return'—';
+  if(Math.abs(v)>=1e15||(v!==0&&Math.abs(v)<1e-9))return v.toExponential(3);
+  return v.toFixed(settings.precision);
+}
+function cleanNumStr(x){
+  var s=String(parseFloat(x.toPrecision(10)));
+  return(s==='0'||s==='-0')?'0':s;
+}
+/* Recalculate every row (and the base field) from the current base amount.
+   The row being edited is skipped so its caret/typing is never disturbed. */
+function updateRowValues(excludeC){
+  var usable=ratesUsable(),amt=parseAmt();
+  $$('#curList .cur-input').forEach(function(inp){
+    var c=inp.getAttribute('data-c');
+    if(c===excludeC)return;
+    var r=(usable&&ratesCache.rates[c]!==undefined)?ratesCache.rates[c]:null;
+    if(r!==null&&r>0)inp.value=fmtPlain(amt*r);
+  });
 }
 
 /* ================================================================
@@ -771,12 +816,14 @@ function renderList(){
   }
   el.innerHTML=targets.map(function(c){
     var r=usable&&ratesCache.rates[c]!==undefined?ratesCache.rates[c]:null;
-    var val=r!==null?fmtAmt(amt*r):'—';
+    var field=r!==null
+      ?'<input class="cur-input" data-c="'+c+'" inputmode="decimal" enterkeyhint="done" autocomplete="off" spellcheck="false" aria-label="Value in '+c+'" value="'+fmtPlain(amt*r)+'">'
+      :'<b>—</b>';
     var sub=r!==null?('1 '+settings.base+' = '+fmtAmt(r)+' '+c):'No rate data';
-    return'<div class="card cur-row" data-c="'+c+'" data-v="'+(r!==null?val.replace(/,/g,''):'')+'">'+
+    return'<div class="card cur-row" data-c="'+c+'">'+
       '<span class="flag">'+curFlag(c)+'</span>'+
       '<div class="cur-id"><b>'+c+'</b><span>'+curName(c)+'</span></div>'+
-      '<div class="cur-amt"><b>'+val+'</b><span>'+sub+'</span></div></div>';
+      '<div class="cur-amt">'+field+'<span>'+sub+'</span></div></div>';
   }).join('')+
   '<button class="add-row" id="addCur"><svg class="ic"><use href="#i-plus"/></svg>Add currency</button>';
   var add=$('#addCur');if(add)add.addEventListener('click',function(){openPicker('add')});
@@ -922,10 +969,7 @@ function bindManage(){
   $('#manageAdd').addEventListener('click',function(){openPicker('add')});
   $('#manageList').addEventListener('click',function(e){
     var del=e.target.closest('.mng-del');if(!del)return;
-    var c=del.getAttribute('data-c');
-    targets=targets.filter(function(t){return t!==c});
-    saveTargets();renderManage();renderList();updateSettingsDynamic();
-    toast('Removed '+c);
+    confirmRemove(del.getAttribute('data-c'));
   });
   var drag=null;
   var list=$('#manageList');
@@ -981,14 +1025,28 @@ function bindManage(){
 }
 
 /* ================================================================
-   Copy converted value on tap
+   Confirm dialog (delete currency via long-press or manage sheet)
    ================================================================ */
-function bindListCopy(){
-  $('#curList').addEventListener('click',function(e){
-    var row=e.target.closest('.cur-row');if(!row)return;
-    var v=row.getAttribute('data-v');
-    if(!v)return;
-    copyText(v).then(function(ok){toast(ok?('Copied '+v):'Could not copy')});
+var confirmCb=null;
+function confirmDialog(title,text,cb){
+  $('#confirmTitle').textContent=title;
+  $('#confirmText').textContent=text;
+  confirmCb=cb;
+  openSheet('sheetConfirm');
+}
+function confirmRemove(c){
+  confirmDialog('Remove '+c+'?',curName(c)+' will no longer be shown in your converter.',function(){
+    targets=targets.filter(function(t){return t!==c});
+    saveTargets();renderList();updateSettingsDynamic();
+    if(document.getElementById('sheetManage').classList.contains('open'))renderManage();
+    toast('Removed '+c+' '+curFlag(c));
+  });
+}
+function bindConfirm(){
+  $('#confirmOk').addEventListener('click',function(){
+    var cb=confirmCb;confirmCb=null;
+    closeSheet('sheetConfirm');
+    if(cb)cb();
   });
 }
 
@@ -1092,7 +1150,8 @@ function bindKeypad(){
   });
 }
 function bindFX(){
-  $('#amount').addEventListener('input',function(){
+  var amtEl=$('#amount');
+  amtEl.addEventListener('input',function(){
     var v=this.value.replace(/[^0-9.,\-]/g,'').replace(/,/g,'.');
     var neg=v.charAt(0)==='-';v=v.replace(/-/g,'');if(neg)v='-'+v;
     var i=v.indexOf('.');
@@ -1100,12 +1159,53 @@ function bindFX(){
     v=v.slice(0,16);
     if(v!==this.value){this.value=v}
     amount=v;
-    renderList();
+    updateRowValues(null);
   });
-  $('#amount').addEventListener('focus',function(){this.select()});
-  $('#amount').addEventListener('keydown',function(e){if(e.key==='Enter')this.blur()});
+  amtEl.addEventListener('focus',function(){this.select()});
+  amtEl.addEventListener('keydown',function(e){if(e.key==='Enter')this.blur()});
   $('#refreshBtn').addEventListener('click',function(){buzz();refreshRates(true)});
   $('#baseSelect').addEventListener('click',function(){openPicker('base')});
+
+  var list=$('#curList');
+
+  /* Editing a target currency's value recalculates the base amount and,
+     through it, every other row (PRD 3.2.2). */
+  list.addEventListener('input',function(e){
+    var inp=e.target.closest('.cur-input');if(!inp)return;
+    var c=inp.getAttribute('data-c');
+    var usable=ratesUsable();
+    var r=usable?ratesCache.rates[c]:null;
+    if(!r||r<=0)return;
+    var v=parseFloat(inp.value.replace(/,/g,'.'));
+    if(!isFinite(v))return;
+    var base=v/r;
+    if(!isFinite(base))return;
+    amount=cleanNumStr(base);
+    if(document.activeElement!==amtEl)amtEl.value=amount;
+    updateRowValues(c);
+  });
+
+  /* Long-press a currency row to delete it (with confirmation dialog). */
+  var lp=null;
+  function cancelLp(){if(lp){clearTimeout(lp.t);lp=null}}
+  list.addEventListener('pointerdown',function(e){
+    if(e.target.closest('.cur-input')||e.target.closest('.add-row'))return;
+    var row=e.target.closest('.cur-row');if(!row)return;
+    var c=row.getAttribute('data-c');if(!c)return;
+    cancelLp();
+    lp={x:e.clientX,y:e.clientY,t:setTimeout(function(){
+      lp=null;
+      if(navigator.vibrate){try{navigator.vibrate(25)}catch(err){}}
+      confirmRemove(c);
+    },500)};
+  });
+  list.addEventListener('pointermove',function(e){
+    if(!lp)return;
+    if(Math.abs(e.clientX-lp.x)>10||Math.abs(e.clientY-lp.y)>10)cancelLp();
+  });
+  list.addEventListener('pointerup',cancelLp);
+  list.addEventListener('pointercancel',cancelLp);
+  list.addEventListener('scroll',cancelLp,true);
 }
 function tick(){
   if(mode==='fx')updateFreshness();
@@ -1121,7 +1221,7 @@ function onVisibility(){
 }
 function boot(){
   bindKeypad();bindFX();bindSheets();bindSettings();bindPicker();bindManage();
-  bindListCopy();bindKeyboard();injectManifest();setupInstall();
+  bindConfirm();bindKeyboard();injectManifest();setupInstall();
   $('#fab').addEventListener('click',function(){
     buzz();setMode(mode==='calc'?'fx':'calc');
   });
