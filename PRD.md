@@ -50,7 +50,9 @@ CalcPlus is a mobile application that combines a standard calculator with a fore
   - Currency name
   - Converted amount based on current rates
 - Scrollable list for many currencies
-
+- Currencies are removed by long-pressing to pull up a "delete" dialog for confirmation
+- Each currency numeric field is editable so that changing its value will re-calculate the relative values for all of the other currencies, including the base currency
+ 
 #### 3.2.3 Rate Refresh
 - Dedicated UI element (button) to manually refresh FX rates
 - Display "freshness" indicator showing time since last update
