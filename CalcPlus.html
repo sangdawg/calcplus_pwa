@@ -21,15 +21,31 @@
   --text:#eef2fb; --muted:#8b94ab; --dim:#57608a;
   --accent:#6366f1; --accent2:#a855f7;
   --green:#34d399; --amber:#fbbf24; --red:#f87171;
+  --sheet:#0e1426; --field:#0d1426; --btn2:#1b2440; --btn2-fg:#c7d0e8;
+  --grab:#2a3350; --backdrop:rgba(3,6,15,.62); --drag:#1a2440; --toast:#1c2742;
+  --dash:rgba(255,255,255,.13);
+  --glow-a:rgba(99,102,241,.20); --glow-b:rgba(168,85,247,.16);
+}
+/* FX converter runs in a light, low-glare palette (eye comfort: warm paper
+   background instead of pure white, softened text contrast). The calculator
+   keeps the dark theme; everything is driven by these variables. */
+body[data-mode="fx"]{
+  --bg:#f3f1ec; --card:#fbfaf8; --line:rgba(20,24,34,.10);
+  --text:#333a48; --muted:#68717f; --dim:#9aa1ad;
+  --sheet:#f7f5f1; --field:#ebe8e1; --btn2:#e6e2da; --btn2-fg:#5b6472;
+  --grab:#c9c3b8; --backdrop:rgba(42,46,58,.38); --drag:#ffffff; --toast:#ffffff;
+  --dash:rgba(20,24,34,.18);
+  --glow-a:rgba(99,102,241,.07); --glow-b:rgba(16,185,129,.06);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overscroll-behavior:none}
 body{
   background:var(--bg);color:var(--text);overflow:hidden;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  background-image:radial-gradient(60% 40% at 85% -10%,rgba(99,102,241,.20),transparent),
-                   radial-gradient(50% 35% at 8% 108%,rgba(168,85,247,.16),transparent);
+  background-image:radial-gradient(60% 40% at 85% -10%,var(--glow-a),transparent),
+                   radial-gradient(50% 35% at 8% 108%,var(--glow-b),transparent);
   touch-action:manipulation;
+  transition:background-color .35s ease,color .35s ease;
 }
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
 svg.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -42,7 +58,7 @@ header{height:54px;position:relative;display:flex;align-items:center;gap:8px;pad
 .brand{position:absolute;left:0;right:0;text-align:center;font-size:12px;font-weight:700;letter-spacing:.34em;color:var(--dim);user-select:none;pointer-events:none}
 .icon-btn{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
 .icon-btn:active{background:rgba(255,255,255,.06)}
-.chip{display:none;align-items:center;background:#0d1426;border:1px solid var(--line);color:var(--muted);
+.chip{display:none;align-items:center;background:var(--field);border:1px solid var(--line);color:var(--muted);
   font-size:12px;font-weight:700;padding:7px 11px;border-radius:11px}
 body[data-mode="fx"] .chip{display:flex}
 .chev-r{transform:rotate(-90deg)}
@@ -78,7 +94,8 @@ main.no-anim .screen{transition:none}
 .key.fn{background:#232d47;color:#c3cde6;font-size:20px;font-weight:600}
 .key.op{background:#2b3350;color:#a5b4fc;font-size:27px}
 .key.op.pending{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
-.key.eq{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:29px;font-weight:600}
+.key.eq{background:linear-gradient(135deg,#10b981,#0d9488);color:#fff;font-size:29px;font-weight:600;
+  box-shadow:0 4px 16px rgba(13,148,136,.35)}
 
 /* ---------- FAB (anchored to the centered app column, not the window) ---------- */
 #fab{position:absolute;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:58px;height:58px;
@@ -109,11 +126,11 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 .base-select .chev-r{margin-left:auto;color:var(--dim)}
 .amount{display:block;width:100%;background:transparent;border:0;outline:none;color:var(--text);
   text-align:right;font-size:35px;font-weight:300;padding:6px 0 8px;margin-top:4px;
-  border-bottom:1px dashed rgba(255,255,255,.13);font-variant-numeric:tabular-nums}
+  border-bottom:1px dashed var(--dash);font-variant-numeric:tabular-nums}
 .amount:focus{border-bottom-color:var(--accent)}
 .meta-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
-.refresh{display:inline-flex;align-items:center;gap:7px;background:#1b2440;border:1px solid var(--line);
-  color:#c7d0e8;padding:8px 13px;border-radius:11px;font-size:13px;font-weight:600}
+.refresh{display:inline-flex;align-items:center;gap:7px;background:var(--btn2);border:1px solid var(--line);
+  color:var(--btn2-fg);padding:8px 13px;border-radius:11px;font-size:13px;font-weight:600}
 .refresh:active{filter:brightness(1.25)}
 .refresh:disabled{opacity:.55}
 .refresh.spin svg{animation:spin 1s linear infinite}
@@ -121,7 +138,9 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 .fresh{font-size:12px;color:var(--muted);text-align:right}
 .fresh.stale{color:var(--amber)}
 .stale-warn{margin-top:10px;padding:9px 12px;border-radius:11px;font-size:12.5px;
-  background:rgba(251,191,36,.09);border:1px solid rgba(251,191,36,.28);color:#fde68a}
+  background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.30);color:var(--warn-fg)}
+:root{--warn-fg:#fde68a}
+body[data-mode="fx"]{--warn-fg:#7a5a0d}
 
 .cur-list{display:flex;flex-direction:column;gap:8px;
   padding-bottom:calc(100px + env(safe-area-inset-bottom))}
@@ -130,8 +149,8 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 .row-handle{align-self:stretch;display:flex;align-items:center;margin-left:-6px;padding:0 2px 0 8px;
   color:#39415c;touch-action:none;cursor:grab}
 .row-handle .ic{width:17px;height:17px}
-.cur-row.dragging{position:relative;z-index:5;transform:scale(1.02);background:#1a2440;
-  border-color:rgba(139,92,246,.55);box-shadow:0 14px 34px rgba(0,0,0,.55);transition:none}
+.cur-row.dragging{position:relative;z-index:5;transform:scale(1.02);background:var(--drag);
+  border-color:rgba(139,92,246,.55);box-shadow:0 14px 34px rgba(0,0,0,.25);transition:none}
 .cur-id{display:flex;flex-direction:column;min-width:0}
 .cur-id b{font-size:16px;letter-spacing:.02em}
 .cur-id span{font-size:12px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -163,16 +182,16 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 /* ---------- sheets ---------- */
 .sheet-wrap{position:fixed;inset:0;pointer-events:none}
 .sheet-wrap.open{pointer-events:auto}
-.backdrop{position:absolute;inset:0;background:rgba(3,6,15,.62);backdrop-filter:blur(4px);
+.backdrop{position:absolute;inset:0;background:var(--backdrop);backdrop-filter:blur(4px);
   -webkit-backdrop-filter:blur(4px);opacity:0;transition:opacity .25s}
 .sheet-wrap.open .backdrop{opacity:1}
 .sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:520px;max-height:86vh;max-height:86dvh;
-  background:#0e1426;border-radius:24px 24px 0 0;border-top:1px solid rgba(255,255,255,.09);
+  background:var(--sheet);border-radius:24px 24px 0 0;border-top:1px solid var(--line);
   transform:translateY(105%);transition:transform .32s cubic-bezier(.32,.72,.24,1);
   display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom);
   box-shadow:0 -18px 60px rgba(0,0,0,.55)}
 .sheet-wrap.open .sheet{transform:none}
-.grab{width:38px;height:4px;border-radius:2px;background:#2a3350;margin:10px auto 4px;flex:none}
+.grab{width:38px;height:4px;border-radius:2px;background:var(--grab);margin:10px auto 4px;flex:none}
 .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding:6px 16px 10px;flex:none}
 .sheet-head h2{font-size:17px;font-weight:700}
@@ -183,7 +202,7 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 .btn-primary:active{filter:brightness(1.15)}
 
 /* settings */
-.install-card{margin:4px 0 6px;padding:13px 14px;border-radius:15px;font-size:13px;color:#c7d0e8;
+.install-card{margin:4px 0 6px;padding:13px 14px;border-radius:15px;font-size:13px;color:var(--btn2-fg);
   background:linear-gradient(135deg,rgba(99,102,241,.16),rgba(168,85,247,.13));
   border:1px solid rgba(139,92,246,.32);display:flex;align-items:center;gap:10px;
   justify-content:space-between;line-height:1.45}
@@ -195,7 +214,7 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 .set-row.link:active{background:rgba(255,255,255,.03)}
 .set-name{font-size:15px}
 .set-val{color:var(--muted);font-size:14px;font-weight:600;white-space:nowrap}
-.seg{display:inline-flex;background:#0d1426;border:1px solid var(--line);border-radius:12px;
+.seg{display:inline-flex;background:var(--field);border:1px solid var(--line);border-radius:12px;
   padding:3px;gap:2px;flex-wrap:wrap}
 .seg button{padding:7px 13px;border-radius:9px;color:var(--muted);font-size:13.5px;font-weight:600}
 .seg button.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
@@ -214,7 +233,7 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 .about{margin:20px 4px 4px;font-size:12px;color:var(--dim);line-height:1.7;text-align:center}
 
 /* picker */
-.sheet-search{display:flex;align-items:center;gap:9px;margin:2px 16px 10px;background:#0d1426;
+.sheet-search{display:flex;align-items:center;gap:9px;margin:2px 16px 10px;background:var(--field);
   border:1px solid var(--line);border-radius:12px;padding:9px 12px;flex:none;color:var(--muted)}
 .sheet-search input{flex:1;background:none;border:0;outline:none;color:var(--text);font-size:15px;min-width:0}
 .pick-row{display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid var(--line)}
@@ -231,7 +250,7 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 
 /* confirm dialog */
 .dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.94);
-  width:min(330px,86vw);background:#111930;border:1px solid var(--line);border-radius:20px;
+  width:min(330px,86vw);background:var(--sheet);border:1px solid var(--line);border-radius:20px;
   padding:22px 20px 16px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6);
   opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
 .sheet-wrap.open .dialog{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
@@ -239,14 +258,14 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 .dialog p{font-size:13.5px;color:var(--muted);line-height:1.5;margin-bottom:18px}
 .dialog-actions{display:flex;gap:10px}
 .dialog-actions button{flex:1;padding:12px;border-radius:13px;font-weight:700;font-size:14.5px}
-.btn-ghost{background:#1b2440;color:#c7d0e8}
+.btn-ghost{background:var(--btn2);color:var(--btn2-fg)}
 .btn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;
   box-shadow:0 4px 16px rgba(239,68,68,.35)}
 .manage-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .mng-row{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);
   border-radius:14px;height:62px;padding:0 6px 0 4px;transition:transform .18s ease,background .15s,border-color .15s}
-.mng-row.dragging{background:#1c2647;border-color:rgba(139,92,246,.55);z-index:5;position:relative;
-  box-shadow:0 14px 34px rgba(0,0,0,.55);transition:none;transform:scale(1.02)}
+.mng-row.dragging{background:var(--drag);border-color:rgba(139,92,246,.55);z-index:5;position:relative;
+  box-shadow:0 14px 34px rgba(0,0,0,.25);transition:none;transform:scale(1.02)}
 .drag-handle{padding:12px 8px;color:var(--dim);touch-action:none;cursor:grab;align-self:stretch;
   display:flex;align-items:center}
 .mng-row .cur-id{flex:1;min-width:0}
@@ -255,7 +274,7 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
 
 /* toast */
 #toast{position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translate(-50%,-16px);
-  background:#1c2742;border:1px solid var(--line);color:var(--text);padding:10px 18px;border-radius:14px;
+  background:var(--toast);border:1px solid var(--line);color:var(--text);padding:10px 18px;border-radius:14px;
   font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:86vw;text-align:center;
   box-shadow:0 8px 30px rgba(0,0,0,.45)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
@@ -397,7 +416,7 @@ body[data-mode="fx"] #fab .ic-calc{opacity:1;transform:none}
         <span class="set-name">Last successful refresh</span>
         <span class="set-val" id="lastRefresh">—</span>
       </div>
-      <div class="about">CalcPlus v1.2 · single-file PWA<br>
+      <div class="about">CalcPlus v1.3 · single-file PWA<br>
         Rates: ExchangeRate-API (primary) · Frankfurter (fallback)<br>
         All data stays on your device</div>
     </div>
@@ -718,6 +737,8 @@ var mode=null;
 function setMode(m,instant){
   if(m===mode)return;
   mode=m;document.body.setAttribute('data-mode',m);
+  var tc=document.querySelector('meta[name="theme-color"]');
+  if(tc)tc.setAttribute('content',m==='fx'?'#f3f1ec':'#070b16');
   $('#screenCalc').classList.toggle('active',m==='calc');
   $('#screenFx').classList.toggle('active',m==='fx');
   if(instant){var main=$('#main');main.classList.add('no-anim');

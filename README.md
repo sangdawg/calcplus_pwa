@@ -31,7 +31,7 @@ Once installed it runs offline (the whole app is local); FX rates need a connect
 - **API status monitoring** (Settings) — 🟢 Live / 🟡 Timeout (failing or slow) / 🔴 Dead (failing for > 24 h) per provider, plus time since last check and the last successful refresh timestamp.
 - **Currencies** — searchable picker (~160 currencies with flags), drag-handle reordering, add/remove, change base (auto-refetches).
 - **Settings** — default launch mode, decimal precision (2–6, default 4), persisted in `localStorage`.
-- **Mode switching** — floating action button toggles Calculator ↔ FX with a slide transition; the icon always shows the mode you'd switch *to*.
+- **Mode switching** — floating action button toggles Calculator ↔ FX with a slide transition; the icon always shows the mode you'd switch *to*. Themed by mode for eye comfort: the calculator stays dark, while the FX converter (and the sheets/dialogs opened from it) use a warm, low-glare light palette; the `=` confirm key is accented emerald.
 - Mobile-first dark UI, safe-area aware (notch), haptic tick on keys (Android), keyboard shortcuts on desktop (`0-9 . + - * /`, Enter, Esc, Backspace, `c`, `e`, `n`).
 
 ## Repo Layout
