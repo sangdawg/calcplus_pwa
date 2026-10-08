@@ -40,6 +40,7 @@ Once installed it runs offline (the whole app is local); FX rates need a connect
 CalcPlus.html        ← the app (generated; share this file)
 index.html           ← same file, root-friendly for static hosts
 src/app.template.html← source (with __ICON*__ placeholders)
+tests/               ← calculator/formatter test suite (Node, no deps)
 tools/make_icons.py  ← regenerates PNG icons (pure stdlib) → assets/
 tools/build.py       ← injects icon data URIs → CalcPlus.html + index.html
 assets/              ← generated icons + icons.json
@@ -51,6 +52,14 @@ To rebuild after editing the template:
 python3 tools/make_icons.py   # only if you want new icons
 python3 tools/build.py
 ```
+
+To run the tests (Node ≥ 18, no dependencies):
+
+```sh
+npm test              # or: node --test "tests/*.test.mjs"
+```
+
+The suite loads the real script out of `src/app.template.html` into a Node `vm` with a minimal DOM, so it exercises the shipped calculator code, not a copy.
 
 ## Notes
 
